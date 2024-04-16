@@ -1,3 +1,19 @@
+# Dmitry
+
+This plugin by default generates the html+js redirect, which is not good in terms of SEO, because it does not send 301 Moved Permanently header.
+
+I decided to add functionality to generate the .301.redirect file that can be included in the nginx config.
+
+The redirect file contains the following:
+rewrite ^old_url$ new_url permanent;
+
+NOTE: there is a hardcoded path for old and new URLs.
+
+My modifications are in the `mkdocs-redirects/plugin.py` file
+function write_nginx_redirect_file() and a few variables.
+
+
+
 # mkdocs-redirects
 
 **Plugin for [`mkdocs`](https://www.mkdocs.org/) to create page redirects (e.g. for moved/renamed pages)**

@@ -31,6 +31,42 @@ Redirecting...
 </html>
 """
 
+REDIRECT_FILE_NAME = ".301.redirects"
+DOCS_PATH_FOR_SERVER = "/docs/"
+
+
+def write_nginx_redirect_file(site_dir, old_path, new_path):
+    """Write an Nginx redirect file into the site_dir"""
+    # file name is hardcoded: .301.redirects  (yes with dot (.) in front)
+    # the structure inside file looks accordiongly to the Nginx configuration requirenments:
+    # like:
+    # rewrite ^/old_path$ /new_path permanent;
+    # example:
+    # rewrite ^/docs/using-qbee-as-a-relay-for-other-devices.html$ /tutorial-ssh-port-forwarding.html permanent;
+
+    # Determine all relevant paths
+    old_path_abs = os.path.join(site_dir, old_path)
+    old_dir = os.path.dirname(old_path)
+    old_dir_abs = os.path.dirname(old_path_abs)
+
+    # Create parent directories if they don't exist
+    if not os.path.exists(old_dir_abs):
+        log.debug("Creating directory '%s'", old_dir)
+        os.makedirs(old_dir_abs)
+
+    # Write the string with the redirect rule to the redirect file
+    log.debug("Creating redirect: '%s' -> '%s'", old_path, new_path)
+
+    # this is what we write into the .301.redirect file
+    content = "rewrite ^" +DOCS_PATH_FOR_SERVER  + old_path + "$ " +DOCS_PATH_FOR_SERVER + new_path + " permanent;\n"
+
+    redirect_file = os.path.join(site_dir, REDIRECT_FILE_NAME)
+
+    with open(redirect_file, "a", encoding="utf-8") as f:
+      f.write(content)
+
+
+
 
 def write_html(site_dir, old_path, new_path):
     """Write an HTML file in the site_dir with a meta redirect to the new page"""
@@ -94,6 +130,13 @@ class RedirectPlugin(BasePlugin):
         # Determine if 'use_directory_urls' is set
         use_directory_urls = config.get("use_directory_urls")
 
+
+        # delete the old redirect file if it exists
+        redirect_file = os.path.join(config["site_dir"], REDIRECT_FILE_NAME)
+        if os.path.exists(redirect_file):
+            os.remove(redirect_file)
+
+
         # Walk through the redirect map and write their HTML files
         for page_old, page_new in self.redirects.items():
             # Need to remove hash fragment from new page to verify existence
@@ -115,6 +158,13 @@ class RedirectPlugin(BasePlugin):
 
             # DO IT!
             write_html(
+                config["site_dir"],
+                get_html_path(page_old, use_directory_urls),
+                dest_path,
+            )
+
+            # Write Nginx redirect file
+            write_nginx_redirect_file(
                 config["site_dir"],
                 get_html_path(page_old, use_directory_urls),
                 dest_path,
